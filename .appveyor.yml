@@ -1,0 +1,56 @@
+image: Visual Studio 2015
+
+init:
+  - git config --global core.autocrlf input
+
+clone_folder: c:\projects\my-prj
+shallow_clone: true
+
+matrix:
+  fast_finish: false
+
+platform:
+  - x64
+  - x86
+
+configuration:
+  - Debug
+  - Release
+
+environment:
+  matrix:
+    - TOOLCHAIN: msvc10
+    - TOOLCHAIN: msvc12
+    - TOOLCHAIN: msvc14
+    - TOOLCHAIN: msvc15
+
+build_script:
+  - mkdir build
+  - cd build
+  - cmake .. %CMAKE_CONFIGURE_FLAGS%
+  - cmake --build . %CMAKE_CONFIGURE_FLAGS%
+install:
+  # скрипт настройки среды и установки зависимостей:
+  - call ci\appveyor\set-env.bat %TOOLCHAIN% %PLATFORM%
+  - appveyor DownloadFile <url> -FileName <local-file>
+  - 7z e -y <local-file> -o<local-dir>
+  - ...
+test_script:
+  - ctest -C %CONFIGURATION% --output-on-failure
+
+artifacts:
+  - path: helloworld.exe
+
+deploy:
+  # выкладываем tagged-коммиты на GitHub Releases:
+  provider: GitHub
+  description: '$(APPVEYOR_REPO_TAG_NAME)' # tag как имя релиза (на Travis так по умолчанию)
+
+  auth_token:
+    secure: mCQCx3IfGGp6qBDa/LJiaNNM0d+b7bnjAT+LNf+zHI44ufStjycXc4VX0X0h6jhV # токен, зашифрованный на сайте appveyor.ci
+
+  artifact: /.*\.exe/ # регулярное выражение, описывающее все артефакты данного релиза
+  force_update: true # перезаписывать артефакты, если файл с таким именем уже имеется
+
+  on:
+    appveyor_repo_tag: true # выполнять deploy только для tagged-commit
